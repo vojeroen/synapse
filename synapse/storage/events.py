@@ -554,7 +554,8 @@ class EventsStore(EventsWorkerStore):
             if ctx.state_group in state_groups_map:
                 continue
 
-            state_groups_map[ctx.state_group] = ctx.current_state_ids
+            if isinstance(ctx, EventContext) and ctx.current_state_ids:
+                state_groups_map[ctx.state_group] = ctx.current_state_ids
 
         # We need to map the event_ids to their state groups. First, let's
         # check if the event is one we're persisting, in which case we can
