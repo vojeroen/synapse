@@ -54,6 +54,13 @@ class FakeSite:
 
         return FakeLogger()
 
+def default_config():
+    m = Mock()
+    m.enable_registration = True
+    m.password_providers = []
+    m.signing_key = [b"A"]
+    m.registrations_require_3pid = []
+    return m
 
 @attr.s
 class FakeHomeserver(HomeServer):
@@ -62,19 +69,17 @@ class FakeHomeserver(HomeServer):
     hostname = attr.ib(default="localhost")
     _building = attr.ib(default=attr.Factory(dict))
     ratelimiter = attr.ib(default=attr.Factory(Ratelimiter))
-
+    config = attr.ib(default=attr.Factory(default_config))
     version_string = b"1"
     distributor = ""
-
-    @property
-    def config(self):
-        m = Mock()
-        m.enable_registration = True
-        m.password_providers = []
-        return m
+    tls_server_context_factory = None
 
     def get_clock(self):
         return Clock(self._reactor)
+
+    def get_pusherpool(self):
+        m = Mock()
+        return m
 
 
 def make_request(method, path, content=b""):
@@ -91,3 +96,16 @@ def make_request(method, path, content=b""):
     req.requestReceived(method, path, b"1.1")
 
     return req, channel
+
+
+def wait_until_result(clock, channel, timeout=100):
+    """
+    Wait until the channel has a result.
+    """
+    x = 0
+
+    while not channel.result:
+        x += 1
+        if x > timeout:
+            raise Exception("Timed out waiting for request to finish.")
+        clock.advance(0.1)
