@@ -60,7 +60,7 @@ def default_config():
     m.enable_registration = True
     m.password_providers = []
     m.signing_key = [b"A"]
-    m.registrations_require_3pid = []
+    m.server_name = "testserver"
     return m
 
 
