@@ -174,3 +174,16 @@ class RegisterRestServletTestCase(unittest.TestCase):
         }
         self.assertEquals(channel.result["code"], b"200", channel.result)
         self.assertDictContainsSubset(det_data, json.loads(channel.result["body"]))
+
+    def test_POST_disabled_guest_registration(self):
+        self.hs.config.allow_guest_access = False
+
+        request, channel = make_request(b"POST", self.url + b"?kind=guest", b"{}")
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        self.assertEquals(channel.result["code"], b"403", channel.result)
+        self.assertEquals(
+            json.loads(channel.result["body"])["error"],
+            "Guest access is disabled",
+        )
