@@ -26,6 +26,10 @@ from tests.server import FakeHomeserver, make_request
 
 
 class CreateUserServletTestCase(unittest.TestCase):
+    """
+    Tests for CreateUserRestServlet.
+    """
+
     def setUp(self):
         self.registration_handler = Mock()
 
