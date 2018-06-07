@@ -54,6 +54,7 @@ class FakeSite:
 
         return FakeLogger()
 
+
 def default_config():
     m = Mock()
     m.enable_registration = True
@@ -61,6 +62,7 @@ def default_config():
     m.signing_key = [b"A"]
     m.registrations_require_3pid = []
     return m
+
 
 @attr.s
 class FakeHomeserver(HomeServer):
