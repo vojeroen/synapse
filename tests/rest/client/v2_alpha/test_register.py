@@ -156,3 +156,21 @@ class RegisterRestServletTestCase(unittest.TestCase):
             json.loads(channel.result["body"])["error"],
             "Registration has been disabled",
         )
+
+    def test_POST_guest_registration(self):
+        user_id = "a@b"
+        self.hs.config.macaroon_secret_key = "test"
+        self.hs.config.allow_guest_access = True
+        self.registration_handler.register = Mock(return_value=(user_id, None))
+
+        request, channel = make_request(b"POST", self.url + b"?kind=guest", b"{}")
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        det_data = {
+            "user_id": user_id,
+            "home_server": self.hs.hostname,
+            "device_id": "guest_device",
+        }
+        self.assertEquals(channel.result["code"], b"200", channel.result)
+        self.assertDictContainsSubset(det_data, json.loads(channel.result["body"]))
