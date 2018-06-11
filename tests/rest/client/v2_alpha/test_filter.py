@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from twisted.internet import defer, reactor
-
 import synapse.types
 from synapse.api.errors import Codes
 from synapse.rest.client.v2_alpha import filter
@@ -25,7 +23,6 @@ from tests import unittest
 from synapse.http.server import JsonResource
 
 from tests.server import (
-    FakeHomeserver,
     make_request,
     wait_until_result,
     ThreadedMemoryReactorClock as MemoryReactorClock,

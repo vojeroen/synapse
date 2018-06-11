@@ -21,8 +21,9 @@ from twisted.test.proto_helpers import MemoryReactorClock
 from mock import Mock
 from synapse.http.server import JsonResource
 from synapse.rest.client.v1.register import register_servlets
+from synapse.util import Clock
 from tests import unittest
-from tests.server import FakeHomeserver, make_request
+from tests.server import setup_test_homeserver, make_request
 
 
 class CreateUserServletTestCase(unittest.TestCase):
@@ -40,8 +41,11 @@ class CreateUserServletTestCase(unittest.TestCase):
 
         handlers = Mock(registration_handler=self.registration_handler)
         self.clock = MemoryReactorClock()
+        self.hs_clock = Clock(self.clock)
 
-        self.hs = FakeHomeserver(self.clock, "superbig~testing~thing.com")
+        self.hs = self.hs = setup_test_homeserver(
+            http_client=None, clock=self.hs_clock, reactor=self.clock
+        )
         self.hs.get_datastore = Mock(return_value=self.datastore)
         self.hs.get_handlers = Mock(return_value=handlers)
 

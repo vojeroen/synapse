@@ -4,17 +4,19 @@ from mock import Mock
 from twisted.python import failure
 from twisted.test.proto_helpers import MemoryReactorClock
 
+from synapse.util import Clock
 from synapse.api.errors import InteractiveAuthIncompleteError
 from synapse.http.server import JsonResource
 from synapse.rest.client.v2_alpha.register import register_servlets
 from tests import unittest
-from tests.server import FakeHomeserver, make_request, wait_until_result
+from tests.server import setup_test_homeserver, make_request, wait_until_result
 
 
 class RegisterRestServletTestCase(unittest.TestCase):
     def setUp(self):
 
         self.clock = MemoryReactorClock()
+        self.hs_clock = Clock(self.clock)
         self.url = b"/_matrix/client/r0/register"
 
         self.appservice = None
@@ -42,7 +44,9 @@ class RegisterRestServletTestCase(unittest.TestCase):
             identity_handler=self.identity_handler,
             login_handler=self.login_handler,
         )
-        self.hs = FakeHomeserver(self.clock, "superbig~testing~thing.com")
+        self.hs = setup_test_homeserver(
+            http_client=None, clock=self.hs_clock, reactor=self.clock
+        )
         self.hs.get_auth = Mock(return_value=self.auth)
         self.hs.get_handlers = Mock(return_value=self.handlers)
         self.hs.get_auth_handler = Mock(return_value=self.auth_handler)
