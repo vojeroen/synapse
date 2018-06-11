@@ -183,6 +183,5 @@ class RegisterRestServletTestCase(unittest.TestCase):
 
         self.assertEquals(channel.result["code"], b"403", channel.result)
         self.assertEquals(
-            json.loads(channel.result["body"])["error"],
-            "Guest access is disabled",
+            json.loads(channel.result["body"])["error"], "Guest access is disabled"
         )

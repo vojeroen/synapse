@@ -22,12 +22,15 @@ from synapse.types import UserID
 from synapse.util import Clock
 from tests import unittest
 
-from twisted.trial import unittest
-import logging
-
 from synapse.http.server import JsonResource
 
-from tests.server import FakeHomeserver, make_request, wait_until_result, ThreadedMemoryReactorClock as MemoryReactorClock, setup_test_homeserver
+from tests.server import (
+    FakeHomeserver,
+    make_request,
+    wait_until_result,
+    ThreadedMemoryReactorClock as MemoryReactorClock,
+    setup_test_homeserver,
+)
 
 
 PATH_PREFIX = "/_matrix/client/v2_alpha"
@@ -45,9 +48,7 @@ class FilterTestCase(unittest.TestCase):
         self.hs_clock = Clock(self.clock)
 
         self.hs = setup_test_homeserver(
-            http_client=None,
-            clock=self.hs_clock,
-            reactor=self.clock,
+            http_client=None, clock=self.hs_clock, reactor=self.clock
         )
 
         self.auth = self.hs.get_auth()
@@ -61,7 +62,8 @@ class FilterTestCase(unittest.TestCase):
 
         def get_user_by_req(request, allow_guest=False, rights="access"):
             return synapse.types.create_requester(
-                UserID.from_string(self.USER_ID), 1, False, None)
+                UserID.from_string(self.USER_ID), 1, False, None
+            )
 
         self.auth.get_user_by_access_token = get_user_by_access_token
         self.auth.get_user_by_req = get_user_by_req
@@ -75,23 +77,24 @@ class FilterTestCase(unittest.TestCase):
 
     def test_add_filter(self):
         request, channel = make_request(
-            b"POST", b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
+            b"POST",
+            b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID),
+            self.EXAMPLE_FILTER_JSON,
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
 
         self.assertEqual(channel.result["code"], b"200")
         self.assertEqual(channel.json_body, {"filter_id": "0"})
-        filter = self.store.get_user_filter(
-            user_localpart='apple',
-            filter_id=0,
-        )
+        filter = self.store.get_user_filter(user_localpart='apple', filter_id=0)
         self.clock.advance(0)
         self.assertEquals(filter.result, self.EXAMPLE_FILTER)
 
     def test_add_filter_for_other_user(self):
         request, channel = make_request(
-            b"POST", b"/_matrix/client/r0/user/%s/filter" % (b'@watermelon:test'), self.EXAMPLE_FILTER_JSON
+            b"POST",
+            b"/_matrix/client/r0/user/%s/filter" % (b'@watermelon:test'),
+            self.EXAMPLE_FILTER_JSON,
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
@@ -103,7 +106,9 @@ class FilterTestCase(unittest.TestCase):
         _is_mine = self.hs.is_mine
         self.hs.is_mine = lambda target_user: False
         request, channel = make_request(
-            b"POST", b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
+            b"POST",
+            b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID),
+            self.EXAMPLE_FILTER_JSON,
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
@@ -114,12 +119,13 @@ class FilterTestCase(unittest.TestCase):
 
     def test_get_filter(self):
         filter_id = self.filtering.add_user_filter(
-            user_localpart='apple',
-            user_filter=self.EXAMPLE_FILTER
+            user_localpart='apple', user_filter=self.EXAMPLE_FILTER
         )
         self.clock.advance(1)
         filter_id = filter_id.result
-        request, channel = make_request(b"GET", b"/_matrix/client/r0/user/%s/filter/%s" % (self.USER_ID, filter_id))
+        request, channel = make_request(
+            b"GET", b"/_matrix/client/r0/user/%s/filter/%s" % (self.USER_ID, filter_id)
+        )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
 
@@ -127,8 +133,8 @@ class FilterTestCase(unittest.TestCase):
         self.assertEquals(channel.json_body, self.EXAMPLE_FILTER)
 
     def test_get_filter_non_existant(self):
-        request, channel = make_request(b"GET",
-            "/_matrix/client/r0/user/%s/filter/12382148321" % (self.USER_ID)
+        request, channel = make_request(
+            b"GET", "/_matrix/client/r0/user/%s/filter/12382148321" % (self.USER_ID)
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
@@ -139,8 +145,8 @@ class FilterTestCase(unittest.TestCase):
     # Currently invalid params do not have an appropriate errcode
     # in errors.py
     def test_get_filter_invalid_id(self):
-        request, channel = make_request(b"GET",
-            "/_matrix/client/r0/user/%s/filter/foobar" % (self.USER_ID)
+        request, channel = make_request(
+            b"GET", "/_matrix/client/r0/user/%s/filter/foobar" % (self.USER_ID)
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)
@@ -149,8 +155,8 @@ class FilterTestCase(unittest.TestCase):
 
     # No ID also returns an invalid_id error
     def test_get_filter_no_id(self):
-        request, channel = make_request(b"GET",
-            "/_matrix/client/r0/user/%s/filter/" % (self.USER_ID)
+        request, channel = make_request(
+            b"GET", "/_matrix/client/r0/user/%s/filter/" % (self.USER_ID)
         )
         request.render(self.resource)
         wait_until_result(self.clock, channel)

@@ -4,7 +4,6 @@ import attr
 import json
 from six import text_type
 
-from twisted.internet import reactor
 from twisted.python.failure import Failure
 from twisted.internet.defer import Deferred
 from twisted.test.proto_helpers import MemoryReactorClock
@@ -131,7 +130,6 @@ def wait_until_result(clock, channel, timeout=100):
 
 
 class ThreadedMemoryReactorClock(MemoryReactorClock):
-
     def callFromThread(self, callback, *args, **kwargs):
         d = Deferred()
         d.addCallback(lambda x: callback(*args, **kwargs))
@@ -148,24 +146,33 @@ def setup_test_homeserver(*args, **kwargs):
     pool = d.get_db_pool()
 
     def runWithConnection(func, *args, **kwargs):
-        return threads.deferToThreadPool(pool._reactor, pool.threadpool,
-                                         pool._runWithConnection,
-                                         func, *args, **kwargs)
-    def runInteraction(Interaction, *args, **kwargs):
-        return threads.deferToThreadPool(pool._reactor, pool.threadpool,
-                                         pool._runInteraction,
-                                         interaction, *args, **kw)
+        return threads.deferToThreadPool(
+            pool._reactor,
+            pool.threadpool,
+            pool._runWithConnection,
+            func,
+            *args,
+            **kwargs
+        )
+
+    def runInteraction(interaction, *args, **kwargs):
+        return threads.deferToThreadPool(
+            pool._reactor,
+            pool.threadpool,
+            pool._runInteraction,
+            interaction,
+            *args,
+            **kwargs
+        )
 
     pool.runWithConnection = runWithConnection
     pool.runInteraction = runInteraction
 
-    class ThreadPool():
-
+    class ThreadPool:
         def start(self):
             pass
 
         def callInThreadWithCallback(self, onResult, function, *args, **kwargs):
-
             def _(res):
                 if isinstance(res, Failure):
                     onResult(False, res)

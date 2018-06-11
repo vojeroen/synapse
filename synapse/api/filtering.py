@@ -15,7 +15,6 @@
 from synapse.api.errors import SynapseError
 from synapse.storage.presence import UserPresenceState
 from synapse.types import UserID, RoomID
-from twisted.internet import defer
 
 import simplejson as json
 import jsonschema

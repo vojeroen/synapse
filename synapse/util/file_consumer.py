@@ -73,7 +73,10 @@ class BackgroundFileConsumer(object):
         self._producer = producer
         self.streaming = streaming
         self._finished_deferred = run_in_background(
-            threads.deferToThreadPool, self._reactor, self._reactor.threadpool, self._writer
+            threads.deferToThreadPool,
+            self._reactor,
+            self._reactor.threadpool,
+            self._writer,
         )
         if not streaming:
             self._producer.resumeProducing()
