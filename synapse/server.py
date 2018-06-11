@@ -328,6 +328,7 @@ class HomeServer(object):
 
         return adbapi.ConnectionPool(
             name,
+            cp_reactor=self.get_clock()._reactor,
             **self.db_config.get("args", {})
         )
 
