@@ -37,7 +37,8 @@ USE_POSTGRES_FOR_TESTS = False
 
 
 @defer.inlineCallbacks
-def setup_test_homeserver(name="test", datastore=None, config=None, reactor=None, **kargs):
+def setup_test_homeserver(name="test", datastore=None, config=None, reactor=None,
+                          **kargs):
     """Setup a homeserver suitable for running tests against. Keyword arguments
     are passed to the Homeserver constructor. If no datastore is supplied a
     datastore backed by an in-memory sqlite db will be given to the HS.

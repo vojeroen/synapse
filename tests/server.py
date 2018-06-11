@@ -8,11 +8,7 @@ from twisted.python.failure import Failure
 from twisted.internet.defer import Deferred
 from twisted.test.proto_helpers import MemoryReactorClock
 
-from mock import Mock
-from synapse.api.ratelimiting import Ratelimiter
 from synapse.http.site import SynapseRequest
-from synapse.server import HomeServer
-from synapse.util import Clock
 from twisted.internet import threads
 from tests.utils import setup_test_homeserver as _sth
 
