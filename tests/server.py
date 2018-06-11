@@ -177,5 +177,6 @@ def setup_test_homeserver(*args, **kwargs):
             clock._reactor.callLater(0, d.callback, True)
             return d
 
+    clock.threadpool = ThreadPool()
     pool.threadpool = ThreadPool()
     return d
