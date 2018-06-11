@@ -13,34 +13,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 
 import synapse.types
 from synapse.api.errors import Codes
 from synapse.rest.client.v2_alpha import filter
 from synapse.types import UserID
+from synapse.util import Clock
 from tests import unittest
 
-from ....utils import MockHttpResource, setup_test_homeserver
+from twisted.trial import unittest
+import logging
+
+from synapse.http.server import JsonResource
+
+from tests.server import FakeHomeserver, make_request, wait_until_result, ThreadedMemoryReactorClock as MemoryReactorClock, setup_test_homeserver
+
 
 PATH_PREFIX = "/_matrix/client/v2_alpha"
 
 
 class FilterTestCase(unittest.TestCase):
 
-    USER_ID = "@apple:test"
+    USER_ID = b"@apple:test"
     EXAMPLE_FILTER = {"room": {"timeline": {"types": ["m.room.message"]}}}
-    EXAMPLE_FILTER_JSON = '{"room": {"timeline": {"types": ["m.room.message"]}}}'
+    EXAMPLE_FILTER_JSON = b'{"room": {"timeline": {"types": ["m.room.message"]}}}'
     TO_REGISTER = [filter]
 
-    @defer.inlineCallbacks
     def setUp(self):
-        self.mock_resource = MockHttpResource(prefix=PATH_PREFIX)
+        self.clock = MemoryReactorClock()
+        self.hs_clock = Clock(self.clock)
 
-        self.hs = yield setup_test_homeserver(
+        self.hs = setup_test_homeserver(
             http_client=None,
-            resource_for_client=self.mock_resource,
-            resource_for_federation=self.mock_resource,
+            clock=self.hs_clock
         )
 
         self.auth = self.hs.get_auth()
@@ -61,75 +67,91 @@ class FilterTestCase(unittest.TestCase):
 
         self.store = self.hs.get_datastore()
         self.filtering = self.hs.get_filtering()
+        self.resource = JsonResource(self.hs)
 
         for r in self.TO_REGISTER:
-            r.register_servlets(self.hs, self.mock_resource)
+            r.register_servlets(self.hs, self.resource)
 
-    @defer.inlineCallbacks
     def test_add_filter(self):
-        (code, response) = yield self.mock_resource.trigger(
-            "POST", "/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
+        request, channel = make_request(
+            b"POST", b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
         )
-        self.assertEquals(200, code)
-        self.assertEquals({"filter_id": "0"}, response)
-        filter = yield self.store.get_user_filter(
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        self.assertEqual(channel.result["code"], b"200")
+        self.assertEqual(channel.json_body, {"filter_id": "0"})
+        filter = self.store.get_user_filter(
             user_localpart='apple',
             filter_id=0,
         )
-        self.assertEquals(filter, self.EXAMPLE_FILTER)
+        self.clock.advance(0)
+        self.assertEquals(filter.result, self.EXAMPLE_FILTER)
 
-    @defer.inlineCallbacks
     def test_add_filter_for_other_user(self):
-        (code, response) = yield self.mock_resource.trigger(
-            "POST", "/user/%s/filter" % ('@watermelon:test'), self.EXAMPLE_FILTER_JSON
+        request, channel = make_request(
+            b"POST", b"/_matrix/client/r0/user/%s/filter" % (b'@watermelon:test'), self.EXAMPLE_FILTER_JSON
         )
-        self.assertEquals(403, code)
-        self.assertEquals(response['errcode'], Codes.FORBIDDEN)
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
 
-    @defer.inlineCallbacks
+        self.assertEqual(channel.result["code"], b"403")
+        self.assertEquals(channel.json_body["errcode"], Codes.FORBIDDEN)
+
     def test_add_filter_non_local_user(self):
         _is_mine = self.hs.is_mine
         self.hs.is_mine = lambda target_user: False
-        (code, response) = yield self.mock_resource.trigger(
-            "POST", "/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
+        request, channel = make_request(
+            b"POST", b"/_matrix/client/r0/user/%s/filter" % (self.USER_ID), self.EXAMPLE_FILTER_JSON
         )
-        self.hs.is_mine = _is_mine
-        self.assertEquals(403, code)
-        self.assertEquals(response['errcode'], Codes.FORBIDDEN)
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
 
-    @defer.inlineCallbacks
+        self.hs.is_mine = _is_mine
+        self.assertEqual(channel.result["code"], b"403")
+        self.assertEquals(channel.json_body["errcode"], Codes.FORBIDDEN)
+
     def test_get_filter(self):
-        filter_id = yield self.filtering.add_user_filter(
+        filter_id = self.filtering.add_user_filter(
             user_localpart='apple',
             user_filter=self.EXAMPLE_FILTER
         )
-        (code, response) = yield self.mock_resource.trigger_get(
-            "/user/%s/filter/%s" % (self.USER_ID, filter_id)
-        )
-        self.assertEquals(200, code)
-        self.assertEquals(self.EXAMPLE_FILTER, response)
+        self.clock.advance(1)
+        filter_id = filter_id.result
+        request, channel = make_request(b"GET", b"/_matrix/client/r0/user/%s/filter/%s" % (self.USER_ID, filter_id))
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
 
-    @defer.inlineCallbacks
+        self.assertEqual(channel.result["code"], b"200")
+        self.assertEquals(channel.json_body, self.EXAMPLE_FILTER)
+
     def test_get_filter_non_existant(self):
-        (code, response) = yield self.mock_resource.trigger_get(
-            "/user/%s/filter/12382148321" % (self.USER_ID)
+        request, channel = make_request(b"GET",
+            "/_matrix/client/r0/user/%s/filter/12382148321" % (self.USER_ID)
         )
-        self.assertEquals(400, code)
-        self.assertEquals(response['errcode'], Codes.NOT_FOUND)
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        self.assertEqual(channel.result["code"], b"400")
+        self.assertEquals(channel.json_body["errcode"], Codes.NOT_FOUND)
 
     # Currently invalid params do not have an appropriate errcode
     # in errors.py
-    @defer.inlineCallbacks
     def test_get_filter_invalid_id(self):
-        (code, response) = yield self.mock_resource.trigger_get(
-            "/user/%s/filter/foobar" % (self.USER_ID)
+        request, channel = make_request(b"GET",
+            "/_matrix/client/r0/user/%s/filter/foobar" % (self.USER_ID)
         )
-        self.assertEquals(400, code)
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        self.assertEqual(channel.result["code"], b"400")
 
     # No ID also returns an invalid_id error
-    @defer.inlineCallbacks
     def test_get_filter_no_id(self):
-        (code, response) = yield self.mock_resource.trigger_get(
-            "/user/%s/filter/" % (self.USER_ID)
+        request, channel = make_request(b"GET",
+            "/_matrix/client/r0/user/%s/filter/" % (self.USER_ID)
         )
-        self.assertEquals(400, code)
+        request.render(self.resource)
+        wait_until_result(self.clock, channel)
+
+        self.assertEqual(channel.result["code"], b"400")
