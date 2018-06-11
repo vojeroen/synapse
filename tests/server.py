@@ -118,6 +118,7 @@ def wait_until_result(clock, channel, timeout=100):
     """
     Wait until the channel has a result.
     """
+    clock.run()
     x = 0
 
     while not channel.result:
