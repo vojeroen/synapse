@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 from twisted.internet.defer import CancelledError
 from twisted.python import failure
 
@@ -408,7 +408,7 @@ class DeferredTimeoutError(Exception):
     """
 
 
-def add_timeout_to_deferred(deferred, timeout, on_timeout_cancel=None):
+def add_timeout_to_deferred(deferred, timeout, on_timeout_cancel=None, reactor=None):
     """
     Add a timeout to a deferred by scheduling it to be cancelled after
     timeout seconds.

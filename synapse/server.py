@@ -165,15 +165,19 @@ class HomeServer(object):
         'server_notices_sender',
     ]
 
-    def __init__(self, hostname, **kwargs):
+    def __init__(self, hostname, reactor=None, **kwargs):
         """
         Args:
             hostname : The hostname for the server.
         """
+        if not reactor:
+            from twisted.internet import reactor
+
+        self._reactor = reactor
         self.hostname = hostname
         self._building = {}
 
-        self.clock = Clock()
+        self.clock = Clock(reactor)
         self.distributor = Distributor()
         self.ratelimiter = Ratelimiter()
 
@@ -185,6 +189,9 @@ class HomeServer(object):
         logger.info("Setting up.")
         self.datastore = DataStore(self.get_db_conn(), self)
         logger.info("Finished setting up.")
+
+    def get_reactor(self):
+        return self._reactor
 
     def get_ip_from_request(self, request):
         # X-Forwarded-For is handled by our custom request type.
@@ -328,7 +335,7 @@ class HomeServer(object):
 
         return adbapi.ConnectionPool(
             name,
-            cp_reactor=self.get_clock()._reactor,
+            cp_reactor=self.get_reactor(),
             **self.db_config.get("args", {})
         )
 
