@@ -1,15 +1,14 @@
-from twisted.python import failure
+import json
 
+from mock import Mock
+from twisted.python import failure
 from twisted.test.proto_helpers import MemoryReactorClock
 
-from synapse.rest.client.v2_alpha.register import register_servlets
-from synapse.api.errors import SynapseError, InteractiveAuthIncompleteError
-from twisted.internet import defer
-from mock import Mock
+from synapse.api.errors import InteractiveAuthIncompleteError
 from synapse.http.server import JsonResource
+from synapse.rest.client.v2_alpha.register import register_servlets
 from tests import unittest
 from tests.server import FakeHomeserver, make_request, wait_until_result
-import json
 
 
 class RegisterRestServletTestCase(unittest.TestCase):
