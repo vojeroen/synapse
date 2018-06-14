@@ -22,7 +22,7 @@ from twisted.web._newclient import ResponseDone
 from synapse.http import cancelled_to_request_timed_out_error
 from synapse.http.endpoint import matrix_federation_endpoint
 import synapse.metrics
-from synapse.util.async import sleep, add_timeout_to_deferred
+from synapse.util.async import add_timeout_to_deferred
 from synapse.util import logcontext
 from synapse.util.logcontext import make_deferred_yieldable
 import synapse.util.retryutils
@@ -193,6 +193,7 @@ class MatrixFederationHttpClient(object):
                         add_timeout_to_deferred(
                             request_deferred,
                             timeout / 1000. if timeout else 60,
+                            self.hs.get_reactor(),
                             cancelled_to_request_timed_out_error,
                             reactor=self.hs.get_reactor()
                         )
@@ -235,7 +236,7 @@ class MatrixFederationHttpClient(object):
                                 delay = min(delay, 2)
                                 delay *= random.uniform(0.8, 1.4)
 
-                            yield sleep(delay)
+                            yield self.clock.sleep(delay)
                             retries_left -= 1
                         else:
                             raise
@@ -261,13 +262,34 @@ class MatrixFederationHttpClient(object):
             defer.returnValue(response)
 
     def sign_request(self, destination, method, url_bytes, headers_dict,
-                     content=None):
+                     content=None, destination_is=None):
+        """
+        Signs a request by adding an Authorization header to headers_dict
+        Args:
+            destination (bytes|None): The desination home server of the request.
+                May be None if the destination is an identity server, in which case
+                destination_is must be non-None.
+            method (bytes): The HTTP method of the request
+            url_bytes (bytes): The URI path of the request
+            headers_dict (dict): Dictionary of request headers to append to
+            content (bytes): The body of the request
+            destination_is (bytes): As 'destination', but if the destination is an
+                identity server
+
+        Returns:
+            None
+        """
         request = {
             "method": method,
             "uri": url_bytes,
             "origin": self.server_name,
-            "destination": destination,
         }
+
+        if destination is not None:
+            request["destination"] = destination
+
+        if destination_is is not None:
+            request["destination_is"] = destination_is
 
         if content is not None:
             request["content"] = content

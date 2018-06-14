@@ -27,6 +27,7 @@ class BackgroundFileConsumer(object):
     Args:
         file_obj (file): The file like object to write to. Closed when
             finished.
+        reactor (twisted.internet.reactor): the Twisted reactor to use
     """
 
     # For PushProducers pause if we have this many unwritten slices
@@ -75,7 +76,7 @@ class BackgroundFileConsumer(object):
         self._finished_deferred = run_in_background(
             threads.deferToThreadPool,
             self._reactor,
-            self._reactor.threadpool,
+            self._reactor.getThreadPool(),
             self._writer,
         )
         if not streaming:
@@ -114,7 +115,7 @@ class BackgroundFileConsumer(object):
                 # producer.
                 if self._producer and self._paused_producer:
                     if self._bytes_queue.qsize() <= self._RESUME_ON_QUEUE_SIZE:
-                        self._runreactor.callFromThread(self._resume_paused_producer)
+                        self._reactor.callFromThread(self._resume_paused_producer)
 
                 bytes = self._bytes_queue.get()
 

@@ -43,6 +43,9 @@ def setup_test_homeserver(name="test", datastore=None, config=None, reactor=None
     are passed to the Homeserver constructor. If no datastore is supplied a
     datastore backed by an in-memory sqlite db will be given to the HS.
     """
+    if reactor is None:
+        from twisted.internet import reactor
+
     if config is None:
         config = Mock()
         config.signing_key = [MockKey()]
