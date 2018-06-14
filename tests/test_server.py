@@ -4,16 +4,20 @@ import re
 from twisted.internet.defer import Deferred
 from twisted.test.proto_helpers import MemoryReactorClock
 
+from synapse.util import Clock
 from synapse.api.errors import Codes, SynapseError
 from synapse.http.server import JsonResource
 from tests import unittest
-from tests.server import FakeHomeserver, make_request
+from tests.server import make_request, setup_test_homeserver
 
 
 class JsonResourceTests(unittest.TestCase):
     def setUp(self):
         self.reactor = MemoryReactorClock()
-        self.homeserver = FakeHomeserver(self.reactor)
+        self.hs_clock = Clock(self.reactor)
+        self.homeserver = setup_test_homeserver(
+            http_client=None, clock=self.hs_clock, reactor=self.reactor
+        )
 
     def test_handler_for_request(self):
         """
