@@ -217,6 +217,7 @@ class _CacheDescriptorBase(object):
     def __init__(self, orig, num_args, inlineCallbacks, cache_context=False):
         self.orig = orig
 
+        self.inlineCallbacks = inlineCallbacks
         if inlineCallbacks:
             self.function_to_call = defer.inlineCallbacks(orig)
         else:
@@ -381,7 +382,12 @@ class CacheDescriptor(_CacheDescriptorBase):
                 if isinstance(cached_result_d, ObservableDeferred):
                     observer = cached_result_d.observe()
                 else:
-                    observer = cached_result_d
+                    # Is this a cached inlineCallbacks expression? If so, we
+                    # always want to return a Deferred.
+                    if self.inlineCallbacks:
+                        observer = defer.succeed(cached_result_d)
+                    else:
+                        observer = cached_result_d
 
             except KeyError:
                 ret = defer.maybeDeferred(
