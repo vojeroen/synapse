@@ -1,3 +1,6 @@
+import hmac
+from hashlib import sha1
+
 from twisted.python import failure
 
 from synapse.rest.client.v2_alpha.register import RegisterRestServlet
@@ -51,6 +54,7 @@ class RegisterRestServletTestCase(unittest.TestCase):
         self.hs.config.enable_registration = True
         self.hs.config.registrations_require_3pid = []
         self.hs.config.auto_join_rooms = []
+        self.hs.config.registration_shared_secret = u"shared"
 
         # init the thing we're testing
         self.servlet = RegisterRestServlet(self.hs)
@@ -146,6 +150,70 @@ class RegisterRestServletTestCase(unittest.TestCase):
         self.assertDictContainsSubset(det_data, result)
         self.auth_handler.get_login_tuple_for_user_id(
             user_id, device_id=device_id, initial_device_display_name=None)
+
+    @defer.inlineCallbacks
+    def test_POST_shared_secret(self):
+        user_id = "@kermit:muppet"
+        token = "kermits_access_token"
+        device_id = "frogfone"
+
+        mac = hmac.new(key=b"shared", digestmod=sha1)
+        mac.update(b"kermit\x00monkey\x00notadmin")
+
+        self.request_data = json.dumps({
+            "username": "kermit",
+            "password": "monkey",
+            "mac": mac.hexdigest(),
+            "device_id": device_id,
+        })
+        self.registration_handler.check_username = Mock(return_value=True)
+        self.auth_result = (None, {
+            "username": "kermit",
+            "password": "monkey"
+        }, None)
+        self.registration_handler.register = Mock(return_value=(user_id, None))
+        self.auth_handler.get_access_token_for_user_id = Mock(
+            return_value=token
+        )
+        self.device_handler.check_device_registered = \
+            Mock(return_value=device_id)
+
+        (code, result) = yield self.servlet.on_POST(self.request)
+        self.assertEquals(code, 200)
+        det_data = {
+            "user_id": user_id,
+            "access_token": token,
+            "home_server": self.hs.hostname,
+            "device_id": device_id,
+        }
+        self.assertDictContainsSubset(det_data, result)
+        self.auth_handler.get_login_tuple_for_user_id(
+            user_id, device_id=device_id, initial_device_display_name=None)
+
+    def test_POST_disabled_mac_registration(self):
+        self.hs.config.registration_shared_secret = False
+        self.request_data = json.dumps({
+            "username": "kermit",
+            "password": "monkey",
+            "mac": "garbage"
+        })
+        d = self.servlet.on_POST(self.request)
+        self.assertFailure(d, SynapseError)
+        self.assertEquals(
+            d.result.args[0], "400: Shared secret registration is not enabled"
+        )
+
+    def test_POST_invalid_mac(self):
+        self.request_data = json.dumps({
+            "username": "kermit",
+            "password": "monkey",
+            "mac": "garbage"
+        })
+        d = self.servlet.on_POST(self.request)
+        self.assertFailure(d, SynapseError)
+        self.assertEquals(
+            d.result.args[0], "403: HMAC incorrect"
+        )
 
     def test_POST_disabled_registration(self):
         self.hs.config.enable_registration = False

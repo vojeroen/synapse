@@ -450,23 +450,33 @@ class RegisterRestServlet(RestServlet):
             raise SynapseError(
                 400, "username must be specified", errcode=Codes.BAD_JSON,
             )
+        if not password:
+            raise SynapseError(
+                400, "password must be specified", errcode=Codes.BAD_JSON,
+            )
 
         # use the username from the original request rather than the
         # downcased one in `username` for the mac calculation
         user = body["username"].encode("utf-8")
+        admin = body.get("admin", None)
+        got_mac = body["mac"]
 
-        # str() because otherwise hmac complains that 'unicode' does not
-        # have the buffer interface
-        got_mac = str(body["mac"])
+        # Its important to check as we use null bytes as HMAC field separators
+        if b"\x00" in user:
+            raise SynapseError(400, "Invalid user")
+        if b"\x00" in password:
+            raise SynapseError(400, "Invalid password")
 
-        # FIXME this is different to the /v1/register endpoint, which
-        # includes the password and admin flag in the hashed text. Why are
-        # these different?
         want_mac = hmac.new(
             key=self.hs.config.registration_shared_secret.encode(),
-            msg=user,
             digestmod=sha1,
-        ).hexdigest()
+        )
+        want_mac.update(user)
+        want_mac.update(b"\x00")
+        want_mac.update(password)
+        want_mac.update(b"\x00")
+        want_mac.update(b"admin" if admin else b"notadmin")
+        want_mac = want_mac.hexdigest()
 
         if not compare_digest(want_mac, got_mac):
             raise SynapseError(
