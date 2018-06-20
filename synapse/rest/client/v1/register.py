@@ -28,8 +28,6 @@ from hashlib import sha1
 import hmac
 import logging
 
-from six import string_types
-
 logger = logging.getLogger(__name__)
 
 
