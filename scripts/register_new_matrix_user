@@ -40,7 +40,7 @@ def request_registration(user, password, server_location, shared_secret, admin=F
     mac = mac.hexdigest()
 
     data = {
-        "user": user,
+        "username": user,
         "password": password,
         "mac": mac,
         "admin": admin,
@@ -51,7 +51,7 @@ def request_registration(user, password, server_location, shared_secret, admin=F
     print "Sending registration request..."
 
     req = urllib2.Request(
-        "%s/_matrix/client/api/r0/register" % (server_location,),
+        "%s/_matrix/client/r0/register" % (server_location,),
         data=json.dumps(data),
         headers={'Content-Type': 'application/json'}
     )
