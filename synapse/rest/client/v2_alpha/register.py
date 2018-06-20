@@ -484,7 +484,8 @@ class RegisterRestServlet(RestServlet):
             )
 
         (user_id, _) = yield self.registration_handler.register(
-            localpart=username, password=password, generate_token=False,
+            localpart=username, password=password, admin=bool(admin),
+            generate_token=False,
         )
 
         result = yield self._create_registration_details(user_id, body)
