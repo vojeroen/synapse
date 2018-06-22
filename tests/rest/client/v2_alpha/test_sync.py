@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import synapse.types
-from synapse.api.errors import Codes
 from synapse.rest.client.v2_alpha import sync
 from synapse.types import UserID
 from synapse.util import Clock
