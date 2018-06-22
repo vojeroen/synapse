@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import hashlib
 from inspect import getcallargs
 from six.moves.urllib import parse as urlparse
@@ -33,7 +34,7 @@ from synapse.util.ratelimitutils import FederationRateLimiter
 # set this to True to run the tests against postgres instead of sqlite.
 # It requires you to have a local postgres database called synapse_test, within
 # which ALL TABLES WILL BE DROPPED
-USE_POSTGRES_FOR_TESTS = False
+USE_POSTGRES_FOR_TESTS = os.environ.get("SYNAPSE_POSTGRES", False)
 
 
 @defer.inlineCallbacks
@@ -120,12 +121,13 @@ def setup_test_homeserver(name="test", datastore=None, config=None, reactor=None
         db_conn = hs.get_db_conn()
         # make sure that the database is empty
         if isinstance(db_engine, PostgresEngine):
+            from psycopg2.sql import Identifier, SQL
             cur = db_conn.cursor()
-            cur.execute("SELECT tablename FROM pg_tables where schemaname='public'")
-            rows = cur.fetchall()
-            for r in rows:
-                cur.execute("DROP TABLE %s CASCADE" % r[0])
+            cur.execute("DROP SCHEMA public CASCADE;")
+            cur.execute("CREATE SCHEMA public;")
         yield prepare_database(db_conn, db_engine, config)
+        db_conn.commit()
+        db_conn.close()
         hs.setup()
     else:
         hs = HomeServer(
